@@ -1,0 +1,20 @@
+{
+  "name": "vomit",
+  "version": "1.0.0",
+  "description": "vomit html template engine",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "vomit",
+    "template",
+    "engine",
+    "html"
+  ],
+  "author": "Zoltan Mihalyi",
+  "license": "MIT",
+  "dependencies": {
+    "jsdom": "^1.0.3"
+  }
+}
