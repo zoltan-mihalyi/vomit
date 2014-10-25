@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Todos - </title>
+</head>
+<body>
+
+<p v-html="todos.length"></p>
+
+<p v-remove>Próba</p>
+<ul>
+    <li v-foreach="idx,todo : todos">
+        <b v-html="todo.name">Név</b>
+        <span v-html="todo.date">1234</span>
+    </li>
+    <li v-if="todos.length===0">Nincs elem!</li>
+</ul>
+<div v-removeouter v-html="X" v-onerror="e:var error=e"></div>
+
+<div style="color: red" v-if="typeof error!=='undefined'" v-html="error">
+    HIBA
+</div>
+
+<div v-include="table:{columns:['name','date'], rows:todos}"></div>
+</body>
+</html>

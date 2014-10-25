@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>ASD</title>
+</head>
+<body>
+<div id="result"></div>
+<script src="../target/vomit.js"></script>
+
+<script>
+    (function () {
+        var template = vomit.fromFile('v-html');
+
+        var result = template({
+            todos: [
+                {
+                    name: 'Valami',
+                    date: '123'
+                },
+                {
+                    name: 'Bármi',
+                    date: 'asd'
+                }
+            ]
+        });
+        document.getElementById('result').innerHTML = result;
+    })();
+</script>
+
+</body>
+</html>

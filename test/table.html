@@ -1,0 +1,10 @@
+<table>
+    <thead>
+    <tr>
+        <th v-foreach="column:columns" v-html="column"></th>
+    </tr>
+    </thead>
+    <tr v-foreach="row:rows">
+        <td v-foreach="column:columns" v-html="row[column]"></td>
+    </tr>
+</table>

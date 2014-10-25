@@ -1,70 +1,89 @@
-var jsdom = require('jsdom');
-var Result = require('./result');
+define(['./result', './commands', './helpers'], function (Result, Commands, Helpers) {
+    var conf = {
+        prefix: '',
+        suffix: '.html'
+    };
 
-var commandsByPrecedence = [];
-var commands = Result.skipAttrs = {};
-
-
-function doctypeToString(doctype) {
-    return '<!DOCTYPE '
-        + doctype.name
-        + (doctype.publicId ? ' PUBLIC "' + doctype.publicId + '"' : '')
-        + (!doctype.publicId && doctype.systemId ? ' SYSTEM' : '')
-        + (doctype.systemId ? ' "' + doctype.systemId + '"' : '')
-        + '>';
-}
-
-function findRoot(node) {
-    if (!node.tagName) {
-        return;
-    }
-    if (node.hasAttribute('v-root')) {
-        return node;
-    }
-    for (var i = 0; i < node.childNodes.length; i++) {
-        var root = findRoot(node.childNodes[i]);
-        if (root) {
-            return root;
+    function parse(html) {
+        if (typeof document === 'object') {
+            return (new DOMParser()).parseFromString(html, 'text/html');
+        } else {
+            return originalRequire('jsdom').jsdom(html);
         }
     }
-}
 
-function compile(html) {
-    var document = jsdom.jsdom(html);
-    var result = new Result();
-    result.add('var __r=[];\nvar __w=function(x){__r.push(x);};\nwith(__c){');
-    var root = findRoot(document.documentElement);
-    if (!root) {
-        root = document.documentElement;
-        if (document.doctype) {
-            result.addWrite(doctypeToString(document.doctype));
+    function findRoot(node) {
+        if (!node.tagName) {
+            return;
+        }
+        if (node.hasAttribute('v-root')) {
+            return node;
+        }
+        for (var i = 0; i < node.childNodes.length; i++) {
+            var root = findRoot(node.childNodes[i]);
+            if (root) {
+                return root;
+            }
         }
     }
-    comp(result, root);
-    result.add('\n}\nreturn __r.join(\'\')');
-    return new Function('__c', result.join('\n'));
-}
 
-function comp(result, node) {
-    var i, j, commandList, commandName, command, value,
-        addNode=true,
-        addInner=true,
-        commandsProcessed=[];
-
-    if (!node.tagName) { //Text node
-        result.addWrite(node.textContent);
-        return;
+    function compile(html) {
+        var document = parse(html);
+        var result = new Result(); //TODO no root?
+        result.add('var __r=[];\n' +
+            'var __w=function(x){__r.push(x);};\n' +
+            'with(vomit.helpers){with(__c){');
+        var root = findRoot(document.documentElement);
+        if (!root) {
+            root = document.documentElement;
+            if (document.doctype) {
+                result.addDoctype(document.doctype);
+            }
+        }
+        compileNode(result, root);
+        result.add('\n}\n}\n' +
+            'return __r.join(\'\')');
+        var resultJoin = result.join('\n');
+        try {
+            return new Function('__c', resultJoin);
+        } catch (e) {
+            if (typeof JSHINT !== 'undefined') {
+                JSLINT(resultJoin);
+                for (var i = 0; i < JSLINT.errors.length; i++) {
+                    var error = JSLINT.errors[i];
+                    if (error.reason != "Unnecessary semicolon.") {
+                        error.line++;
+                        var e = new Error();
+                        e.lineNumber = error.line;
+                        e.message = error.reason;
+//                        if(options.view)
+//                            e.fileName = options.view;
+                        throw e;
+                    }
+                }
+            } else {
+                throw e;
+            }
+        }
     }
 
-    for (i = 0; i < commandsByPrecedence.length; i++) {
-        commandList = commandsByPrecedence[i];
-        if (!commandList) {
-            continue;
+    function compileNode(result, node) {
+        var i, commandList, commandName, command, value,
+            addNode = true,
+            addInner = true,
+            commandsProcessed = [];
+
+        if (!node.tagName) { //Text node
+            result.addWrite(node.textContent);
+            return;
         }
-        for (j = 0; j < commandList.length; j++) {
-            commandName = commandList[j];
+
+        commandList = Commands.getCommandsByPrecedence();
+
+        for (i = 0; i < commandList.length; i++) {
+            commandName = commandList[i];
             if (node.hasAttribute(commandName)) {
-                command = commands[commandName];
+                command = Commands.getCommand(commandName);
                 value = node.getAttribute(commandName);
                 commandsProcessed.push({
                     callEvent: (function (command, value) {
@@ -75,109 +94,72 @@ function comp(result, node) {
                 });
             }
         }
-    }
 
+        for (i = 0; i < commandsProcessed.length; i++) {
+            if (commandsProcessed[i].callEvent('before') === false) {
+                return;
+            }
+        }
 
-    for (i = 0; i < commandsProcessed.length; i++) {
-        if (commandsProcessed[i].callEvent('before') === false) {
-            return;
+        for (i = 0; i < commandsProcessed.length; i++) {
+            if (commandsProcessed[i].callEvent('addNode') === false) {
+                addNode = false;
+            }
+        }
+
+        if (addNode) {
+            result.addOpen(node);
+        }
+
+        for (i = 0; i < commandsProcessed.length; i++) {
+            if (commandsProcessed[i].callEvent('addInner') === false) {
+                addInner = false;
+            }
+        }
+        if (addInner) {
+            for (i = 0; i < node.childNodes.length; i++) {
+                compileNode(result, node.childNodes[i]);
+            }
+        }
+        if (addNode) {
+            result.addClose(node);
+        }
+
+        for (i = commandsProcessed.length - 1; i >= 0; i--) {
+            commandsProcessed[i].callEvent('after');
         }
     }
 
-    for (i = 0; i < commandsProcessed.length; i++) {
-        if (commandsProcessed[i].callEvent('addNode') === false) {
-            addNode = false;
+    fileCache = {};
+
+    function fromFile(src) {
+        src = conf.prefix + src + conf.suffix;
+        if (fileCache[src]) {
+            return fileCache[src];
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", src, false);
+        xhr.send(null);
+        var result = compile(xhr.responseText);
+        fileCache[src] = result;
+        return result;
+    }
+
+    function config(opts) {
+        for (var i in opts) {
+            conf[i] = opts[i];
         }
     }
 
-    if (addNode) {
-        result.addOpen(node);
-    }
+    compile.addCommand = Commands.addCommand;
 
-    for (i = 0; i < commandsProcessed.length; i++) {
-        if (commandsProcessed[i].callEvent('addInner') === false) {
-            addInner = false;
-        }
-    }
-    if (addInner) {
-        for (i = 0; i < node.childNodes.length; i++) {
-            comp(result, node.childNodes[i]);
-        }
-    }
-    if (addNode) {
-        result.addClose(node);
-    }
+    compile.fromFile = fromFile;
 
-    for (i = commandsProcessed.length - 1; i >= 0; i--) {
-        commandsProcessed[i].callEvent('after');
-    }
-}
+    compile.config = config;
 
-function addCommand(precedence, name, events) {
-    events = events || {};
-    function empty() {
-    }
+    compile.helpers = Helpers;
 
-    var normalizedEvents = {
-        before: events.before || empty,
-        after: events.after || empty,
-        addNode: events.addNode || empty,
-        addInner: events.addInner || empty
-    };
-    if (commands[name]) {
-        throw new Error('duplicated name');
-    }
-    if (!commandsByPrecedence[precedence]) {
-        commandsByPrecedence[precedence] = [];
-    }
-    commandsByPrecedence[precedence].push(name);
-    commands[name] = normalizedEvents;
-}
-
-addCommand(1, 'v-remove', {
-    before: function () {
-        return false;
-    }
-});
-addCommand(2, 'v-if', {
-    before: function (value) {
-        this.add('if(' + value + '){');
-    },
-    after: function () {
-        this.add('}');
-    }
-});
-addCommand(3, 'v-foreach', {
-    before: function (value) {
-        var split = value.split(':');
-        var variable = split[0].trim();
-        var expr = split.slice(1).join(':').trim();
-        if (variable.indexOf(',') !== -1) {
-            var index = variable.split(',')[0].trim();
-            variable = variable.split(',')[1].trim();
-        }
-
-        this.add(expr + '.forEach(function(' + variable + (index ? ', ' + index : '') + '){', true);
-    },
-    after: function () {
-        this.add('});', true);
-    }
-});
-addCommand(4, 'v-removeouter', {
-    addNode: function () {
-        return false;
-    }
-});
-addCommand(5, 'v-removeinner', {
-    addInner: function () {
-        return false;
-    }
-});
-addCommand(5, 'v-html', {
-    addInner: function (value) {
-        this.addWrite(value, true);
-        return false;
-    }
+    return compile;
 });
 //todo iterStat
 //todo mark error line
@@ -188,6 +170,9 @@ addCommand(5, 'v-html', {
  */
 //TODO include, v-text, v-html diff
 //todo refactor
-module.exports = {
-    compile: compile
-};
+
+//TODO v-substitute, v-code
+
+//todo helpers, messages
+//todo async?
+//todo debug compile, debug run
