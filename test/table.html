@@ -1,10 +1,16 @@
-<table>
+<table style="border: 2px dashed blueviolet;">
     <thead>
     <tr>
-        <th v-foreach="column:columns" v-html="column"></th>
+        <th v-foreach="column:columns" v-html="column">Col1</th>
+        <th v-remove>Col2</th>
     </tr>
     </thead>
     <tr v-foreach="row:rows">
-        <td v-foreach="column:columns" v-html="row[column]"></td>
+        <td v-foreach="column:columns" v-html="row[column]">Val1</td>
+        <td v-remove>Val2</td>
+    </tr>
+    <tr v-remove>
+        <td>Val1</td>
+        <td>Val2</td>
     </tr>
 </table>

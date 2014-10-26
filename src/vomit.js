@@ -31,8 +31,8 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
         var document = parse(html);
         var result = new Result(); //TODO no root?
         result.add('var __r=[];\n' +
-            'var __w=function(x){__r.push(x);};\n' +
-            'with(vomit.helpers){with(__c){');
+        'var __w=function(x){__r.push(x);};\n' +
+        'with(vomit.helpers){with(__c){');
         var root = findRoot(document.documentElement);
         if (!root) {
             root = document.documentElement;
@@ -42,7 +42,7 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
         }
         compileNode(result, root);
         result.add('\n}\n}\n' +
-            'return __r.join(\'\')');
+        'return __r.join(\'\')');
         var resultJoin = result.join('\n');
         try {
             return new Function('__c', resultJoin);
@@ -53,12 +53,12 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
                     var error = JSLINT.errors[i];
                     if (error.reason != "Unnecessary semicolon.") {
                         error.line++;
-                        var e = new Error();
-                        e.lineNumber = error.line;
-                        e.message = error.reason;
+                        var err = new Error();
+                        err.lineNumber = error.line;
+                        err.message = error.reason;
 //                        if(options.view)
 //                            e.fileName = options.view;
-                        throw e;
+                        throw err;
                     }
                 }
             } else {
@@ -130,7 +130,7 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
         }
     }
 
-    fileCache = {};
+    var fileCache = {};
 
     function fromFile(src) {
         src = conf.prefix + src + conf.suffix;
@@ -151,6 +151,12 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
         }
     }
 
+    function registerToExpress(app) {
+        app.engine('vomit', function (filePath, options, callback) {
+            return callback(null, fromFile(filePath)(options));
+        });
+    }
+
     compile.addCommand = Commands.addCommand;
 
     compile.fromFile = fromFile;
@@ -158,6 +164,8 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
     compile.config = config;
 
     compile.helpers = Helpers;
+
+    compile.registerToExpress = registerToExpress;
 
     return compile;
 });
@@ -176,3 +184,5 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
 //todo helpers, messages
 //todo async?
 //todo debug compile, debug run
+
+//todo <html> file or not?

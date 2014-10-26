@@ -6,19 +6,19 @@
 </head>
 <body>
 
-<p v-html="todos.length"></p>
+Todok száma: <span v-html="todos.length"></span>
 
 <p v-remove>Próba</p>
 <ul>
-    <li v-foreach="idx,todo : todos">
-        <b v-html="todo.name">Név</b>
+    <li v-foreach="idx,todo : todos" v-code="var name=todo.name;">
+        <b v-html="name">Név</b>
         <span v-html="todo.date">1234</span>
     </li>
     <li v-if="todos.length===0">Nincs elem!</li>
 </ul>
-<div v-removeouter v-html="X" v-onerror="e:var error=e"></div>
+<div v-removeouter v-html="X" v-onerror="var err=error"></div>
 
-<div style="color: red" v-if="typeof error!=='undefined'" v-html="error">
+<div style="color: red" v-if="typeof err!=='undefined'" v-html="err">
     HIBA
 </div>
 

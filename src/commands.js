@@ -41,8 +41,7 @@ define(['./result'], function (Result) {
             this.add('try{');
         },
         after: function (value) {
-            var spl = split(value);
-            this.add('}catch(' + spl[0] + '){' + spl[1] + '}');
+            this.add('}catch(error){' + value + '}');
         }
     });
     addCommand(2, 'v-if', {
@@ -74,6 +73,11 @@ define(['./result'], function (Result) {
             return false;
         }
     });
+    addCommand(4, 'v-code', {
+        addNode: function (value) {
+            this.add(value, true);
+        }
+    });
     addCommand(5, 'v-removeinner', {
         addInner: function () {
             return false;
@@ -90,6 +94,7 @@ define(['./result'], function (Result) {
             var spl = split(value);
             var name = spl[0];
             var ctx = spl[1];
+            ctx = ctx || '{}';
             this.addWrite('vomit.fromFile(\'' + name + '\')(' + ctx + ')', true);
         }
     });
