@@ -26,6 +26,10 @@ define([], function () {
         this.addWrite('</' + node.tagName.toLowerCase() + '>');
     };
 
+    Result.prototype.addVoid = function (node) {
+        this.addWrite('<' + node.tagName.toLowerCase() + attrs(node) + '/>');
+    };
+
     Result.prototype.addDoctype = function (doctype) {
         this.addWrite('<!DOCTYPE '
             + doctype.name

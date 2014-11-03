@@ -31,8 +31,8 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
         var document = parse(html);
         var result = new Result(); //TODO no root?
         result.add('var __r=[];\n' +
-        'var __w=function(x){__r.push(x);};\n' +
-        'with(vomit.helpers){with(__c){');
+            'var __w=function(x){__r.push(x);};\n' +
+            'with(vomit.helpers){with(__c){');
         var root = findRoot(document.documentElement);
         if (!root) {
             root = document.documentElement;
@@ -42,7 +42,7 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
         }
         compileNode(result, root);
         result.add('\n}\n}\n' +
-        'return __r.join(\'\')');
+            'return __r.join(\'\')');
         var resultJoin = result.join('\n');
         try {
             return new Function('__c', resultJoin);
@@ -68,7 +68,7 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
     }
 
     function compileNode(result, node) {
-        var i, commandList, commandName, command, value,
+        var i, commandList, commandName, command, value, isVoid,
             addNode = true,
             addInner = true,
             commandsProcessed = [];
@@ -77,6 +77,8 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
             result.addWrite(node.textContent);
             return;
         }
+
+        isVoid = document.createElement(node.tagName).outerHTML.length === node.tagName.length + 2;
 
         commandList = Commands.getCommandsByPrecedence();
 
@@ -108,7 +110,10 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
         }
 
         if (addNode) {
-            result.addOpen(node);
+            if (isVoid) {
+                result.addVoid(node);
+            } else
+                result.addOpen(node);
         }
 
         for (i = 0; i < commandsProcessed.length; i++) {
@@ -122,7 +127,9 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
             }
         }
         if (addNode) {
-            result.addClose(node);
+            if (!isVoid) {
+                result.addClose(node);
+            }
         }
 
         for (i = commandsProcessed.length - 1; i >= 0; i--) {
@@ -168,7 +175,8 @@ define(['./result', './commands', './helpers'], function (Result, Commands, Help
     compile.registerToExpress = registerToExpress;
 
     return compile;
-});
+})
+;
 //todo iterStat
 //todo mark error line
 //todo v-attr, v-for
